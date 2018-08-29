@@ -1,0 +1,27 @@
+<launch>
+  <arg name="mav_name" default="$(env HOSTNAME)"/>
+  <arg name="namespace" default="$(arg mav_name)" />
+
+  <arg name="serial_port" default="/dev/ttyUSB0" />
+  <arg name="log_output" default="screen" />
+
+
+
+  <group ns="$(arg namespace)" >
+
+    <node pkg="rosflight" type="rosflight_io" name="rosflight_io" output="$(arg log_output)">
+      <param name="port" value="$(arg serial_port)"/>
+
+      <!-- signal remapping -->
+      <remap from="imu/data" to="rosflight/imu" />
+      <remap from="status" to="rosflight/status" />
+
+    </node>
+
+
+    <node pkg="rosflight_comm" type="rosflight_comm_node" name="rosflight_comm" output="$(arg log_output)">
+      <param name="mav_name" value="$(arg mav_name)"/>
+    </node>
+  </group>
+</launch>
+

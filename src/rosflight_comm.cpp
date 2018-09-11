@@ -35,6 +35,68 @@ void rosflight_communication::callback_roll_pitch_yawrate_thrust(
   rosflight_rpyrt_pub_.publish(cmd);
 }
 
+struct bound
+{
+  bound(float min_, float max_)
+      : min(min), max(max), center(0), has_center(false)
+  {
+  }
+
+  bound(float min_, float max_, float center_)
+      : min(min), max(max), center(center_), has_center(true)
+  {
+  }
+
+  bound() = delete;
+
+  bool has_center;
+  float min;
+  float center;
+  float max;
+};
+
+float bound_and_scale(const bound& output_bound, const bound& input_bound,
+                      const float input)
+{
+  const auto bounded_input = [&]() {
+    if (input < input_bound.min)
+      return input_bound.min;
+    if (input > input_bound.max)
+      return input_bound.max;
+    else
+      return input;
+  }();
+
+  if (input_bound.has_center)
+  {
+    if (bounded_input > input_bound.center)
+    {
+      const auto i = (bounded_input - input_bound.center) /
+                     (input_bound.max - input_bound.center);
+
+      return output_bound.center + (output_bound.max - output_bound.center) * i;
+    }
+    else if (bounded_input < input_bound.center)
+    {
+      const auto i = (bounded_input - input_bound.min) /
+                     (input_bound.center - input_bound.min);
+
+      return output_bound.min + (output_bound.center - output_bound.min) * i;
+    }
+    else
+    {
+      return output_bound.center;
+    }
+  }
+  else
+  {
+    const auto i =
+        (bounded_input - input_bound.min) / (input_bound.max - input_bound.min);
+
+    return output_bound.min + (output_bound.max - output_bound.min) * i;
+  }
+}
+
 void rosflight_communication::callback_rc_input(
     const rosflight_msgs::RCRawConstPtr& msg)
 {
@@ -43,8 +105,16 @@ void rosflight_communication::callback_rc_input(
 
   joy.header.stamp = msg->header.stamp;
 
+  // Calibration and scaling
+  const bound ib(1000, 2000, 1500);
+  const bound ib_thr(1000, 2000);
+  const bound ob(0, 1, 0.5);
+  const bound ob_thr(0, 1);
+
   for (int i = 0; i < 8; i++)
-    joy.axes.push_back(msg->values[i]);
+    joy.axes.push_back(bound_and_scale(ib, ob, msg->values[i]));
+
+  joy.axes[2] = bound_and_scale(ib_thr, ob_thr, msg->values[2]);
 
   mav_rc_pub_.publish(joy);
 }

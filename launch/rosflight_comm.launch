@@ -2,7 +2,12 @@
   <arg name="mav_name" default="$(env HOSTNAME)"/>
   <arg name="namespace" default="$(arg mav_name)" />
 
-  <arg name="serial_port" default="/dev/ttyUSB0" />
+  <!-- When connected with serial cable on Aaeon UP board use the following -->
+  <arg name="serial_port" default="/dev/ttyS4" />
+
+  <!-- When connected with USB cable use the following -->
+  <!-- arg name="serial_port" default="/dev/ttyUSB0" / -->
+
   <arg name="log_output" default="screen" />
 
 
